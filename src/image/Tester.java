@@ -6,9 +6,9 @@ package image;
 public class Tester {
 
   public static void main(String[] args) {
-    EasyImage image = EasyImage.loadImage("/Users/bryan/Desktop/houdini.JPG");
+    EasyImage image = EasyImage.loadImage("");
     image.decimate(4);
-    image.displayImage("houdini");
+    image.displayImage("");
 
   }
 }
