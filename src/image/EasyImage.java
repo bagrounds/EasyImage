@@ -1,6 +1,7 @@
 package image;
 
 import image.math.EasyVector;
+import image.processors.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -12,10 +13,8 @@ import java.awt.image.Raster;
 import java.io.File;
 import java.io.IOException;
 import java.security.InvalidParameterException;
-import java.util.*;
-import java.util.Queue;
-
-import static java.lang.Math.pow;
+import java.util.Arrays;
+import java.util.LinkedList;
 
 /**
  * EasyImage is an image class that encapsulates a wide array of image processing functionality. The intent is to keep execution as simple as possible.
@@ -30,6 +29,12 @@ public class EasyImage {
     public boolean isBW;
     public int pixelLength;
     public byte[] pixelData;
+
+    private MorphologicalProcessor morphologicalProcessor = new MorphologicalProcessor(this);
+    private ConnectedComponentProcessor connectedComponentProcessor = new ConnectedComponentProcessor(this);
+    private ComparisonProcessor comparisonProcessor = new ComparisonProcessor(this);
+    private ColorProcessor colorProcessor = new ColorProcessor(this);
+    private StatisticProcessor statisticProcessor = new StatisticProcessor(this);
 
     public EasyImage() {
         width = 1;
@@ -144,28 +149,6 @@ public class EasyImage {
         return raster;
     }
 
-    public double meanSqrtDiff(EasyImage image) {
-        double value = 0;
-        double size = pixelData.length;
-
-        for (int i = 0; i < pixelData.length; i++)
-            value += Math.pow(Math.abs(((pixelData[i] & 0xff) - (image.pixelData[i] & 0xff))) / 255.0, .5);
-        return value;
-    }
-
-    public double imageSimilarity(EasyImage b) {
-        return 1 - this.meanAbsDiff(b) / pixelData.length;
-    }
-
-    public double meanAbsDiff(EasyImage image) {
-        double value = 0;
-        double size = pixelData.length;
-
-        for (int i = 0; i < pixelData.length; i++)
-            value += Math.abs(((pixelData[i] & 0xff) - (image.pixelData[i] & 0xff)) / 255.0);
-        return value;
-    }
-
     public void addBorder(int thickness) {
         int newWidth = width + thickness * 2;
         int newHeight = height + thickness * 2;
@@ -241,64 +224,6 @@ public class EasyImage {
         this.width = newWidth;
         this.height = newHeight;
         this.pixelData = cropped;
-
-    }
-
-    public int[] hueHistogram() {
-        int[] histogram = new int[256];
-        double hue;
-
-        for (int i = 0; i < width; i++)
-            for (int j = 0; j < height; j++) {
-                hue = ColorPixel.rgbToHue(getPixelArray(i, j));
-                hue = hue * 255 / 360;
-                histogram[(int) Math.floor(hue)]++;
-            }
-        return histogram;
-    }
-
-    public byte mode() {
-        int[] histogram = histogram();
-
-        int max = 0;
-        int maxIndex = 0;
-
-        for (int i = 0; i < histogram.length; i++)
-            if (histogram[i] > max) {
-                max = histogram[i];
-                maxIndex = i;
-            }
-
-        return (byte) maxIndex;
-    }
-
-    public int[] histogram() {
-        int[] histogram = new int[256];
-
-        for (byte b : pixelData) histogram[b & 0xff]++;
-
-        return histogram;
-    }
-
-    public double norm2() {
-        double value = 0;
-
-        double max = max();
-
-        for (byte b : pixelData) value += pow((b & 0xff) / max, 2);
-
-        value = Math.sqrt(value) * max;
-        return value;
-    }
-
-    public int max() {
-        //if (!isGrayScale) throw new InvalidParameterException();
-
-        int max = 0;
-
-        for (byte b : pixelData) if ((b & 0xff) > max) max = (b & 0xff);
-
-        return max;
     }
 
     int getPixel(int x, int y) {
@@ -319,103 +244,6 @@ public class EasyImage {
         return argb;
     }
 
-    public void filter(EasyVector.Stat stat, int r) {
-        EasyImage temp = new EasyImage(this);
-
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                setPixelArray(i, j, temp.borderlessNeighborhoodStat(i, j, r, stat));
-            }
-        }
-    }
-
-    public byte[] borderlessNeighborhoodStat(int x, int y, int r, EasyVector.Stat stat) {
-        byte[] result = new byte[pixelLength];
-
-        EasyVector neighborhood = new EasyVector();
-
-        for (int a = 0; a < pixelLength; a++) {
-            for (int i = x - r; i <= x + r; i++)
-                for (int j = y - r; j <= y + r; j++) {
-                    byte[] pixelArray;
-                    try {
-                        pixelArray = getPixelArray(i, j);
-                    } catch (java.lang.ArrayIndexOutOfBoundsException e) {
-                        pixelArray = null;
-                    }
-                    if (pixelArray != null) neighborhood.add(pixelArray[a] & 0xff);
-                }
-            result[a] = (byte) neighborhood.stat(stat);
-            neighborhood.clear();
-        }
-        return result;
-    }
-
-    public void colorKeeper(ColorPixel keep, ColorPixel discardColor, double maxDist) {
-        if (isBW || isGrayScale) throw new IllegalArgumentException("this is not a color image");
-        ColorPixel temp;
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                temp = new ColorPixel(getPixelArray(i, j));
-                //System.out.print(Arrays.toString(temp.byteArrayValue()) + ":" + keep.rgbDist(temp )+ "\t\t\t" );
-                if (keep.rgbDist(temp) > maxDist) setPixelArray(i, j, discardColor.byteArrayValue());
-            }
-            //System.out.println();
-        }
-    }
-
-    public void dilate(int n) {
-        EasyImage temp = new EasyImage(this);
-
-        //System.out.println("width = " + width + " height = " + height + " length = " + pixelData.length + "hxw = " + width*height);
-        for (int a = 0; a < n; a++) {
-            for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                    setPixelArray(i, j, temp.borderlessNeighborhoodStat(i, j, 1, EasyVector.Stat.DILATION));
-                }
-            }
-        }
-    }
-
-    public void erode(int n) {
-        invert();
-        dilate(n);
-        invert();
-    }
-
-    public void close(int iterations) {
-        dilate(iterations);
-        erode(iterations);
-    }
-
-    public void open(int iterations) {
-        invert();
-        close(iterations);
-        invert();
-    }
-
-    public void threshold(int keepBelow, int keepAbove) {
-        if (!isGrayScale) throw new IllegalArgumentException();
-
-        for (int i = 0; i < pixelData.length; i++) {
-            if (pixelData[i] > keepBelow && pixelData[i] < keepAbove) pixelData[i] = 0;
-            else pixelData[i] = (byte) 255;
-        }
-
-    }
-
-    public void invert() {
-        if (hasAlphaChannel)
-            for (int i = 0; i < pixelData.length; i++) {
-                if (i % 4 != 0)
-                    pixelData[i] = (byte) (255 - pixelData[i]);
-            }
-        else
-            for (int i = 0; i < pixelData.length; i++) {
-                pixelData[i] = (byte) (255 - pixelData[i]);
-            }
-    }
-
     public void addNoise(int spacing) {
         byte[] white = new byte[pixelLength];
 
@@ -428,68 +256,6 @@ public class EasyImage {
             }
     }
 
-    public void keepLargestComponent() {
-        connectedComponents();
-        int[] histogram = new int[256];
-
-        for (byte b : pixelData) histogram[b & 0xff]++;
-
-        int max = 0;
-        int maxIndex = 0;
-
-        for (int i = 0; i < histogram.length; i++)
-            if (histogram[i] > max) {
-                max = histogram[i];
-                maxIndex = i;
-            }
-
-        keepPixelsWithValues(new byte[]{(byte) maxIndex});
-        isBW = false;
-        isGrayScale = true;
-        convertToBW(0);
-    }
-
-    public void convertToBW(int thresh) {
-        if (!isBW) {
-            if (!isGrayScale)
-                convertToGrayScale();
-            for (int i = 0; i < width; i++)
-                for (int j = 0; j < height; j++) {
-                    int pos = i + j * width;
-                    pixelData[pos] = (byte) (((pixelData[pos] & 0xff) > thresh) ? 255 : 0);
-                }
-            isBW = true;
-            isGrayScale = false;
-        }
-    }
-
-    public void convertToGrayScale() {
-        if (!isGrayScale && !isBW) {
-            byte[] pixelsGray = new byte[width * height];
-
-            for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                    pixelsGray[i + j * width] = (byte) grayValue(getPixelArray(i, j));
-                }
-            }
-            pixelData = pixelsGray;
-            isGrayScale = true;
-            hasAlphaChannel = false;
-            pixelLength = 1;
-        }
-    }
-
-    public int grayValue(byte[] pixelArray) {
-        return grayValue(pixelArray[0], pixelArray[1], pixelArray[2]);
-    }
-
-    public int grayValue(byte r, byte g, byte b) {
-        int red = r & 0xff;
-        int green = g & 0xff;
-        int blue = b & 0xff;
-
-        return (int) (.2126 * red + .7152 * green + .0722 * blue);
-    }
 
     public void keepPixelsWithValues(byte[] values) {
         boolean pixelIsValue = false;
@@ -507,75 +273,6 @@ public class EasyImage {
         }
     }
 
-    public BoundingBox[] connectedComponents() {
-
-        byte[] connected = new byte[width * height];
-
-        Queue<Point> q = new LinkedList<Point>();
-
-        int currentLabel = 1;
-
-        for (int i = 1; i < width - 2; i++) {
-            for (int j = 1; j < height - 2; j++) {
-
-                if (isColor(getPixelArray(i, j), (byte) 255) && connected[i + j * width] == 0) {
-                    Point point = new Point(i, j, width - 1, height - 1);
-                    q.add(point);
-                    connected[i + j * width] = (byte) currentLabel;
-                    while (!q.isEmpty()) {
-                        Point member = q.remove();
-                        Set<Point> neighbors = member.getNeighbors();
-                        for (Point n : neighbors) {
-                            if (isColor(getPixelArray(n.x, n.y), (byte) 255) && connected[n.x + n.y * width] == 0) {
-                                connected[n.x + n.y * width] = (byte) currentLabel;
-                                q.add(n);
-                            }
-                        }
-                    }
-                    currentLabel = ((currentLabel + 1) % 256);
-                }
-            }
-        }
-
-        BoundingBox[] bounds = new BoundingBox[currentLabel - 1];
-        BoundingBox b;
-
-        int xMin = width;
-        int xMax = 0;
-        int yMin = height;
-        int yMax = 0;
-
-        for (int a = 1; a < currentLabel; a++) {
-            for (int i = 0; i < width; i++)
-                for (int j = 0; j < height; j++) {
-                    int value = connected[i + j * width] & 0xff;
-                    if (value == a) {
-                        xMin = (xMin < i) ? xMin : i;
-                        xMax = (xMax > i) ? xMax : i;
-                        yMin = (yMin < j) ? yMin : j;
-                        yMax = (yMax > j) ? yMax : j;
-                    }
-                }
-
-            try {
-                b = new BoundingBox(xMin, xMax, yMin, yMax);
-                bounds[a - 1] = b;
-            } catch (IllegalArgumentException e) {
-                System.err.println("illegal bounding box parameters in c.c.");
-            }
-            xMin = width;
-            xMax = 0;
-            yMin = height;
-            yMax = 0;
-        }
-
-        this.pixelData = connected;
-        this.isGrayScale = true;
-        this.isBW = false;
-
-        return bounds;
-    }
-
     public boolean isColor(byte[] pixel, byte value) {
         boolean isColor = true;
         for (byte b : pixel) if (b != value) isColor = false;
@@ -589,162 +286,6 @@ public class EasyImage {
         for (int i = 0; i < width; i++)
             for (int j = 0; j < height; j++)
                 if (img.isColor(img.getPixelArray(i, j), (byte) 0)) this.setPixelArray(i, j, black);
-    }
-
-    public void filterComponentsBySize(double smallFraction, double largeFraction) {
-        int size = this.pixelData.length;
-        int small = (int) Math.floor(size * smallFraction);
-        int large = (int) Math.floor(size * largeFraction);
-
-        EasyImage temp = new EasyImage(this);
-        BoundingBox[] boxes = temp.connectedComponents();
-        int componentSize = 0;
-
-        for (int a = 0; a <= boxes.length; a++) {
-
-            for (int i = 0; i < size; i++)
-                if (temp.pixelData[i] == a) componentSize++;
-
-            if (componentSize > large || componentSize < small)
-                for (int i = 0; i < size; i++)
-                    if (temp.pixelData[i] == a) this.pixelData[i] = 0;
-
-            componentSize = 0;
-        }
-    }
-
-    public void filterComponentsByBoundingBoxArea(double smallFraction, double largeFraction) {
-        int size = this.pixelData.length;
-        int small = (int) Math.floor(size * smallFraction);
-        int large = (int) Math.floor(size * largeFraction);
-        int area;
-
-        EasyImage temp = new EasyImage(this);
-        BoundingBox[] boxes = temp.connectedComponents();
-
-        for (int a = 0; a <= boxes.length; a++) {
-            area = boxes[a].area();
-
-            if (area > large || area < small)
-                for (int i = 0; i < size; i++)
-                    if (temp.pixelData[i] == a) this.pixelData[i] = 0;
-        }
-    }
-
-    public void filterComponentsByBoundingBoxHeight(int minPixelHeight, int maxPixelHeight) {
-        EasyImage temp = new EasyImage(this);
-        BoundingBox[] boxes = temp.connectedComponents();
-        int height;
-
-
-        for (int a = 0; a <= boxes.length; a++) {
-            height = boxes[a].yMax - boxes[a].yMin;
-
-            if (height > maxPixelHeight || height < minPixelHeight)
-                for (int i = 0; i < pixelData.length; i++)
-                    if (temp.pixelData[i] == a) this.pixelData[i] = 0;
-        }
-    }
-
-    public void filterComponentsByBoundingBoxWidth(int minPixelWidth, int maxPixelWidth) {
-        EasyImage temp = new EasyImage(this);
-        BoundingBox[] boxes = temp.connectedComponents();
-        int width;
-
-
-        for (int a = 0; a < boxes.length; a++) {
-            width = boxes[a].xMax - boxes[a].xMin;
-
-            if (width > maxPixelWidth || width < minPixelWidth)
-                for (int i = 0; i < pixelData.length; i++)
-                    if (temp.pixelData[i] == a) this.pixelData[i] = 0;
-        }
-    }
-
-    public void quantize8Bit() {
-        ColorPixel pixel;
-        double hue, saturation, intensity;
-        double dHue, dSaturation, dIntensity;
-
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                pixel = new ColorPixel(getPixelArray(i, j));
-                hue = pixel.getHue();
-                intensity = pixel.getIntensity();
-                saturation = pixel.getSaturation();
-
-                if (saturation < .2) { // 16 Grayscale
-                    dIntensity = 255 * Math.round(intensity * 16) / 16.0;
-                    setPixelArray(i, j, new byte[]{(byte) dIntensity, (byte) dIntensity, (byte) dIntensity});
-                } else {
-                    dSaturation = Math.ceil(saturation * 5) / 5.0;
-                    dIntensity = Math.round(intensity * 10) / 10.0;
-                    dHue = Math.round(hue * 6 / 360) * 360.0 / 6.0;
-                    setPixelArray(i, j, ColorPixel.rgbFromHsi(dHue, dSaturation, dIntensity));
-                }
-                //System.out.print(Arrays.toString(pixel.byteArrayValue()) + "/" +Arrays.toString(new double[]{hue, saturation, intensity}) + "/" +Arrays.toString( ColorPixel.rgbFromHsi(dHue,dSaturation,dIntensity)));
-                pixel = null;
-            }
-            //System.out.println();
-        }
-    }
-
-    public void quantize3Bit() {
-        ColorPixel p;
-
-        double hue;
-        double intensity;
-        double saturation;
-
-        for (int i = 0; i < width; i++)
-            for (int j = 0; j < height; j++) {
-                p = new ColorPixel(getPixelArray(i, j));
-                intensity = p.getIntensity();
-                saturation = p.getSaturation();
-
-                if (saturation < .2) {
-                    if (intensity < .2) setPixelArray(i, j, ColorPixel.BLACK.byteArrayValue());
-                    else if (intensity < .4) setPixelArray(i, j, ColorPixel.DARKGRAY.byteArrayValue());
-                    else if (intensity < .6) setPixelArray(i, j, ColorPixel.LIGHTGRAY.byteArrayValue());
-                    else if (intensity < .8) setPixelArray(i, j, ColorPixel.GRAYWHITE.byteArrayValue());
-                    else setPixelArray(i, j, ColorPixel.WHITE.byteArrayValue());
-                } else {
-                    hue = p.getHue();
-
-                    if (hue >= 345 || hue < 15)
-                        setPixelArray(i, j, ColorPixel.RED.byteArrayValue());
-                    else if (hue < 45)
-                        setPixelArray(i, j, ColorPixel.REDYELLOW.byteArrayValue());
-                    else if (hue < 75)
-                        setPixelArray(i, j, ColorPixel.YELLOW.byteArrayValue());
-                    else if (hue < 105)
-                        setPixelArray(i, j, ColorPixel.YELLOWGREEN.byteArrayValue());
-                    else if (hue < 135)
-                        setPixelArray(i, j, ColorPixel.GREEN.byteArrayValue());
-                    else if (hue < 165)
-                        setPixelArray(i, j, ColorPixel.GREENCYAN.byteArrayValue());
-                    else if (hue < 195)
-                        setPixelArray(i, j, ColorPixel.CYAN.byteArrayValue());
-                    else if (hue < 225)
-                        setPixelArray(i, j, ColorPixel.CYANBLUE.byteArrayValue());
-                    else if (hue < 255)
-                        setPixelArray(i, j, ColorPixel.BLUE.byteArrayValue());
-                    else if (hue < 285)
-                        setPixelArray(i, j, ColorPixel.BLUEMAGENTA.byteArrayValue());
-                    else if (hue < 315)
-                        setPixelArray(i, j, ColorPixel.MAGENTA.byteArrayValue());
-                    else if (hue < 345)
-                        setPixelArray(i, j, ColorPixel.MAGENTARED.byteArrayValue());
-                }
-            }
-    }
-
-    public void hueKeeper(ColorPixel color, double hueDistance) {
-        for (int i = 0; i < width; i++)
-            for (int j = 0; j < height; j++) {
-                if (!(new ColorPixel(getPixelArray(i, j)).hueDist(color) < hueDistance))
-                    setPixelArray(i, j, ColorPixel.BLACK.byteArrayValue());
-            }
     }
 
     public void printImage() {
@@ -765,16 +306,6 @@ public class EasyImage {
             double value = pixelData[i] & 0xff;
             pixelData[i] = (byte) Math.floor((value - min) * 255 / max);
         }
-    }
-
-    public int min() {
-        //if (!isGrayScale) throw new InvalidParameterException();
-
-        int min = 255;
-
-        for (byte b : pixelData) if ((b & 0xff) < min) min = (b & 0xff);
-
-        return min;
     }
 
     public void decimate(int factor) {
@@ -810,15 +341,6 @@ public class EasyImage {
         frame.setVisible(true);
     }
 
-    /*public void displayImageColorized( String s ){
-        BufferedImage img = getBufferedImage();
-        ImageSingleBand isb = ConvertBufferedImage.convertFromSingle(img, null, ImageUInt8.class);
-        ImageUInt8 imageUInt8 = ConvertBufferedImage.convertFrom(img,(ImageUInt8)null);
-
-        img = VisualizeImageData.grayMagnitudeTemp(isb, null, ImageStatistics.max(imageUInt8));
-
-        displayImage(s);
-    }*/
 
     public LinkedList<Interval> getHorizontalGaps(int gapSize) {
 
@@ -861,41 +383,135 @@ public class EasyImage {
             }
     }
 
-    class Point {
-        public int x;
-        public int y;
-        public int xMax;
-        public int yMax;
-        private Set<Point> neighbors = null;
+    // comparison processing
 
-        Point(int x, int y, int xMax, int yMax) {
-            this.x = x;
-            this.y = y;
-            this.xMax = xMax;
-            this.yMax = yMax;
-        }
-
-        public Set<Point> getNeighbors() {
-            if (neighbors == null) {
-                setNeightbors();
-            }
-            return neighbors;
-        }
-
-        private void setNeightbors() {
-            neighbors = new HashSet<Point>();
-
-            if (x > 0) neighbors.add(new Point(x - 1, y, xMax, yMax));
-            if (y > 0) neighbors.add(new Point(x, y - 1, xMax, yMax));
-            if (x < xMax) neighbors.add(new Point(x + 1, y, xMax, yMax));
-            if (y < yMax) neighbors.add(new Point(x, y + 1, xMax, yMax));
-
-            if (x > 0 && y > 0) neighbors.add(new Point(x - 1, y - 1, xMax, yMax));
-            if (x < xMax && y < yMax) neighbors.add(new Point(x + 1, y + 1, xMax, yMax));
-            if (x > 0 && y < yMax) neighbors.add(new Point(x - 1, y + 1, xMax, yMax));
-            if (y > 0 && x < xMax) neighbors.add(new Point(x + 1, y - 1, xMax, yMax));
-        }
+    public double meanSqrtDiff(EasyImage image) {
+        return comparisonProcessor.meanSqrtDiff(image);
     }
 
+    public double imageSimilarity(EasyImage image) {
+        return comparisonProcessor.imageSimilarity(image);
+    }
+
+    public double meanAbsDiff(EasyImage image) {
+        return comparisonProcessor.meanAbsDiff(image);
+    }
+
+    // statistic processing
+
+    public int[] hueHistogram() {
+        return statisticProcessor.hueHistogram();
+    }
+
+    public byte mode() {
+        return statisticProcessor.mode();
+    }
+
+    public int[] histogram() {
+        return statisticProcessor.histogram();
+    }
+
+    public double norm2() {
+        return statisticProcessor.norm2();
+
+    }
+
+    public int min() {
+        return statisticProcessor.min();
+    }
+
+    public int max() {
+        return statisticProcessor.max();
+    }
+
+    public byte[] borderlessNeighborhoodStat(int x, int y, int r, EasyVector.Stat stat) {
+        return statisticProcessor.borderlessNeighborhoodStat(x, y, r, stat);
+    }
+
+    public void filter(EasyVector.Stat stat, int r) {
+        statisticProcessor.filter(stat, r);
+    }
+
+    // morphological processing
+
+    public void dilate(int n) {
+        morphologicalProcessor.dilate(n);
+    }
+
+    public void erode(int n) {
+        morphologicalProcessor.erode(n);
+    }
+
+    public void close(int iterations) {
+        morphologicalProcessor.close(iterations);
+    }
+
+    public void open(int iterations) {
+        morphologicalProcessor.open(iterations);
+    }
+
+    // connected component processing
+
+    public BoundingBox[] connectedComponents() {
+        return connectedComponentProcessor.computeConnectedComponents();
+    }
+
+    public void keepLargestComponent() {
+        connectedComponentProcessor.keepLargestComponent();
+    }
+
+    public void filterComponentsBySize(double smallFraction, double largeFraction) {
+        connectedComponentProcessor.filterComponentsBySize(smallFraction, largeFraction);
+    }
+
+    public void filterComponentsByBoundingBoxArea(double smallFraction, double largeFraction) {
+        connectedComponentProcessor.filterComponentsByBoundingBoxArea(smallFraction, largeFraction);
+    }
+
+    public void filterComponentsByBoundingBoxHeight(int minPixelHeight, int maxPixelHeight) {
+        connectedComponentProcessor.filterComponentsByBoundingBoxHeight(minPixelHeight, maxPixelHeight);
+    }
+
+    public void filterComponentsByBoundingBoxWidth(int minPixelWidth, int maxPixelWidth) {
+        connectedComponentProcessor.filterComponentsByBoundingBoxWidth(minPixelWidth, maxPixelWidth);
+    }
+
+    // color processing
+
+    public void convertToBW(int thresh) {
+        colorProcessor.convertToBW(thresh);
+    }
+
+    public void convertToGrayScale() {
+        colorProcessor.convertToGrayScale();
+    }
+
+    public int grayValue(byte[] pixelArray) {
+        return colorProcessor.grayValue(pixelArray);
+    }
+
+    public void threshold(int keepBelow, int keepAbove) {
+        colorProcessor.threshold(keepBelow, keepAbove);
+    }
+
+    public void invert() {
+        colorProcessor.invert();
+    }
+
+    public void colorKeeper(ColorPixel keep, ColorPixel discardColor, double maxDist) {
+        colorProcessor.colorKeeper(keep, discardColor, maxDist);
+    }
+
+    public void hueKeeper(ColorPixel color, double hueDistance) {
+        colorProcessor.hueKeeper(color, hueDistance);
+    }
+
+    public void quantize3Bit() {
+        colorProcessor.quantize3Bit();
+    }
+
+    public void quantize8Bit() {
+        colorProcessor.quantize8Bit();
+    }
 }
 
