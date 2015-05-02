@@ -1,12 +1,8 @@
-package image;
+package org.bagrounds.java.image;
 
-import image.math.EasyVector;
+import org.bagrounds.java.image.math.EasyVector;
 
-import java.awt.Color;
-import java.lang.IllegalArgumentException;
-import java.lang.Math;
-import java.lang.Override;
-import java.lang.String;
+import java.awt.*;
 import java.util.Arrays;
 
 /**
@@ -47,23 +43,6 @@ public class ColorPixel {
         this.b = values[2] & 0xff;
     }
 
-    public static double rgbToHue(byte[] rgb) {
-        double hue;
-        double red = (rgb[0] & 0xff) / 255.0;
-        double green = (rgb[1] & 0xff) / 255.0;
-        double blue = (rgb[2] & 0xff) / 255.0;
-
-        double n = .5 * ((red - green) + (red - blue));
-        double d = Math.sqrt(Math.pow(red - green, 2) + (red - blue) * (green - blue));
-        if (d == 0) d = .000001;
-        double theta = Math.toDegrees(Math.acos(n / d));
-
-        if (blue <= green) hue = theta;
-        else hue = 360 - theta;
-
-        return hue;
-    }
-
     public static byte[] rgbFromHsi(double h, double s, double i) {
         int r;
         int b;
@@ -90,14 +69,6 @@ public class ColorPixel {
         return new byte[]{(byte) r, (byte) g, (byte) b};
     }
 
-    public EasyVector rgbVector() {
-        return new EasyVector(new int[]{r, g, b});
-    }
-
-    public Color color() {
-        return new Color(r, g, b);
-    }
-
     /**
      * returns the euclidean distance in RGB space normalized to be a value between 0 and 1.
      *
@@ -114,14 +85,43 @@ public class ColorPixel {
         return v.stat(EasyVector.Stat.NORM2) / Math.sqrt(3);
     }
 
+    public EasyVector rgbVector() {
+        return new EasyVector(new int[]{r, g, b});
+    }
+
     public double hueDist(ColorPixel p) {
         double diff = Math.abs(this.getHue() - p.getHue());
         if (diff > 180) diff = 360 - diff;
         return diff;
     }
 
+    public double getHue() {
+        return rgbToHue(new byte[]{(byte) this.r, (byte) this.g, (byte) this.b});
+    }
+
+    public static double rgbToHue(byte[] rgb) {
+        double hue;
+        double red = (rgb[0] & 0xff) / 255.0;
+        double green = (rgb[1] & 0xff) / 255.0;
+        double blue = (rgb[2] & 0xff) / 255.0;
+
+        double n = .5 * ((red - green) + (red - blue));
+        double d = Math.sqrt(Math.pow(red - green, 2) + (red - blue) * (green - blue));
+        if (d == 0) d = .000001;
+        double theta = Math.toDegrees(Math.acos(n / d));
+
+        if (blue <= green) hue = theta;
+        else hue = 360 - theta;
+
+        return hue;
+    }
+
     public int intValue() {
         return color().getRGB();
+    }
+
+    public Color color() {
+        return new Color(r, g, b);
     }
 
     public byte[] byteArrayValue() {
@@ -130,10 +130,6 @@ public class ColorPixel {
             array[i] = rgbVector().get(i).byteValue();
         }
         return array;
-    }
-
-    public double getHue() {
-        return rgbToHue(new byte[]{(byte) this.r, (byte) this.g, (byte) this.b});
     }
 
     public double getSaturation() {

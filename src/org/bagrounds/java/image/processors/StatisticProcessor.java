@@ -1,8 +1,8 @@
-package image.processors;
+package org.bagrounds.java.image.processors;
 
-import image.ColorPixel;
-import image.EasyImage;
-import image.math.EasyVector;
+import org.bagrounds.java.image.ColorPixel;
+import org.bagrounds.java.image.EasyImage;
+import org.bagrounds.java.image.math.EasyVector;
 
 import static java.lang.Math.pow;
 

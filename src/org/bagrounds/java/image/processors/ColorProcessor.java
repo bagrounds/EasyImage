@@ -1,7 +1,7 @@
-package image.processors;
+package org.bagrounds.java.image.processors;
 
-import image.ColorPixel;
-import image.EasyImage;
+import org.bagrounds.java.image.ColorPixel;
+import org.bagrounds.java.image.EasyImage;
 
 /**
  * Created by bryan on 4/28/15.

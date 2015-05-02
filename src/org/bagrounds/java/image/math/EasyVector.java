@@ -1,6 +1,6 @@
-package image.math;
+package org.bagrounds.java.image.math;
 
-import java.lang.ArrayIndexOutOfBoundsException;import java.lang.IndexOutOfBoundsException;import java.lang.Math;import java.lang.Number;import java.security.InvalidParameterException;
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
@@ -276,13 +276,6 @@ public class EasyVector extends ArrayList<Number> {
         return (this.get(0).doubleValue());
     }
 
-    private double sum() {
-        double sum = 0;
-        for (Number n : this)
-            sum += n.doubleValue();
-        return sum;
-    }
-
     private double norm(double l) {
         double value = 0;
         abs();
@@ -317,6 +310,26 @@ public class EasyVector extends ArrayList<Number> {
         }
     }
 
+    public void dividedBy(double scalar) {
+        for (int i = 0; i < this.size(); i++) {
+            set(i, get(i).doubleValue() / scalar);
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof EasyVector)) return false;
+
+        return (this.minus((EasyVector) o).sum() == 0.0);
+    }
+
+    private double sum() {
+        double sum = 0;
+        for (Number n : this)
+            sum += n.doubleValue();
+        return sum;
+    }
+
     public EasyVector minus(EasyVector v) {
         if (v.size() != size()) throw new InvalidParameterException("vector size mismatch");
 
@@ -326,12 +339,6 @@ public class EasyVector extends ArrayList<Number> {
             difference.add(get(i).doubleValue() - v.get(i).doubleValue());
         }
         return difference;
-    }
-
-    public void dividedBy(double scalar) {
-        for (int i = 0; i < this.size(); i++) {
-            set(i, get(i).doubleValue() / scalar);
-        }
     }
 
     public enum Stat {

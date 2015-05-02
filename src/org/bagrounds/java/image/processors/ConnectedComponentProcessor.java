@@ -1,8 +1,8 @@
-package image.processors;
+package org.bagrounds.java.image.processors;
 
-import image.BoundingBox;
-import image.EasyImage;
-import image.Point;
+import org.bagrounds.java.image.BoundingBox;
+import org.bagrounds.java.image.EasyImage;
+import org.bagrounds.java.image.Point;
 
 import java.util.LinkedList;
 import java.util.Queue;

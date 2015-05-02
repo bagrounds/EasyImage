@@ -1,7 +1,7 @@
-package image;
+package org.bagrounds.java.image;
 
-import image.math.EasyVector;
-import image.processors.*;
+import org.bagrounds.java.image.math.EasyVector;
+import org.bagrounds.java.image.processors.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -29,7 +29,7 @@ public class EasyImage {
     public boolean isBW;
     public int pixelLength;
     public byte[] pixelData;
-
+    public SearchProcessor searchProcessor = new SearchProcessor(this);
     private MorphologicalProcessor morphologicalProcessor = new MorphologicalProcessor(this);
     private ConnectedComponentProcessor connectedComponentProcessor = new ConnectedComponentProcessor(this);
     private ComparisonProcessor comparisonProcessor = new ComparisonProcessor(this);
@@ -51,6 +51,7 @@ public class EasyImage {
         height = image.getHeight();
         hasAlphaChannel = image.getAlphaRaster() != null;
         pixelData = new byte[width * height * 3];
+
 
         if (dataIsInt) {
             DataBufferInt dataBufferInt = (DataBufferInt) image.getRaster().getDataBuffer();
@@ -76,6 +77,7 @@ public class EasyImage {
         hasAlphaChannel = image.hasAlphaChannel;
         isGrayScale = image.isGrayScale;
         isBW = image.isBW;
+
         pixelLength = image.pixelLength;
         pixelData = image.pixelData.clone();
 
@@ -130,21 +132,35 @@ public class EasyImage {
 
         if (isGrayScale) {
             bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
+            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
         } else if (isBW) {
             bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_BINARY);
+            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
         } else {
             bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_3BYTE_BGR);
+            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
         }
-        bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
 
         return bufferedImage;
     }
 
     private int[] getIntRGBRasterArray() {
-        int[] raster = new int[pixelData.length];
+        int[] raster;
+        if (isBW) {
+            System.out.println("length = " + pixelData.length);
+            raster = new int[pixelData.length * 3];
 
-        for (int i = 0; i < pixelData.length; i++) {
-            raster[i] = pixelData[i] & 0xff;
+            for (int i = 0, j = 0; i < pixelData.length; i++) {
+                raster[j++] = pixelData[i] & 0xff;
+                raster[j++] = pixelData[i] & 0xff;
+                raster[j++] = pixelData[i] & 0xff;
+            }
+        } else {
+            raster = new int[pixelData.length];
+
+            for (int i = 0; i < pixelData.length; i++) {
+                raster[i] = pixelData[i] & 0xff;
+            }
         }
         return raster;
     }
@@ -226,6 +242,28 @@ public class EasyImage {
         this.pixelData = cropped;
     }
 
+    public void setSubImage(BoundingBox box, EasyImage img) {
+        int w = box.width();
+        int h = box.height();
+
+        for (int i = 0; i < w + box.xMin; i++) {
+            for (int j = 0; j <= h + box.yMin; j++) {
+                setPixelArray(i + w, j + h, img.getPixelArray(i, j));
+            }
+        }
+    }
+
+    public void setSubImage(BoundingBox box, ColorPixel color) {
+        int w = box.width();
+        int h = box.height();
+
+        for (int i = 0; i < w + box.xMin; i++) {
+            for (int j = 0; j <= h + box.yMin; j++) {
+                setPixelArray(i + w, j + h, color.byteArrayValue());
+            }
+        }
+    }
+
     int getPixel(int x, int y) {
         int pos = (y * pixelLength * width) + (x * pixelLength);
 
@@ -273,12 +311,6 @@ public class EasyImage {
         }
     }
 
-    public boolean isColor(byte[] pixel, byte value) {
-        boolean isColor = true;
-        for (byte b : pixel) if (b != value) isColor = false;
-        return isColor;
-    }
-
     public void logicalAnd(EasyImage img) {
         if (img.width * img.height != width * height) throw new InvalidParameterException();
 
@@ -286,6 +318,12 @@ public class EasyImage {
         for (int i = 0; i < width; i++)
             for (int j = 0; j < height; j++)
                 if (img.isColor(img.getPixelArray(i, j), (byte) 0)) this.setPixelArray(i, j, black);
+    }
+
+    public boolean isColor(byte[] pixel, byte value) {
+        boolean isColor = true;
+        for (byte b : pixel) if (b != value) isColor = false;
+        return isColor;
     }
 
     public void printImage() {
@@ -308,6 +346,14 @@ public class EasyImage {
         }
     }
 
+    public int min() {
+        return statisticProcessor.min();
+    }
+
+    public int max() {
+        return statisticProcessor.max();
+    }
+
     public void decimate(int factor) {
         byte[] newPixelData = new byte[pixelData.length / factor];
         EasyImage newImage = new EasyImage();
@@ -326,7 +372,6 @@ public class EasyImage {
         pixelData = newImage.pixelData;
     }
 
-
     public void displayImage(String title) {
         BufferedImage img = getBufferedImage();
         ImageIcon icon = new ImageIcon(img);
@@ -340,7 +385,6 @@ public class EasyImage {
         frame.pack();
         frame.setVisible(true);
     }
-
 
     public LinkedList<Interval> getHorizontalGaps(int gapSize) {
 
@@ -360,6 +404,8 @@ public class EasyImage {
 
         return largeEnoughIntervals;
     }
+
+    // comparison processing
 
     public EasyVector getColumn(int col) {
         EasyVector vector = new EasyVector();
@@ -383,11 +429,11 @@ public class EasyImage {
             }
     }
 
-    // comparison processing
-
     public double meanSqrtDiff(EasyImage image) {
         return comparisonProcessor.meanSqrtDiff(image);
     }
+
+    // statistic processing
 
     public double imageSimilarity(EasyImage image) {
         return comparisonProcessor.imageSimilarity(image);
@@ -396,8 +442,6 @@ public class EasyImage {
     public double meanAbsDiff(EasyImage image) {
         return comparisonProcessor.meanAbsDiff(image);
     }
-
-    // statistic processing
 
     public int[] hueHistogram() {
         return statisticProcessor.hueHistogram();
@@ -414,14 +458,6 @@ public class EasyImage {
     public double norm2() {
         return statisticProcessor.norm2();
 
-    }
-
-    public int min() {
-        return statisticProcessor.min();
-    }
-
-    public int max() {
-        return statisticProcessor.max();
     }
 
     public byte[] borderlessNeighborhoodStat(int x, int y, int r, EasyVector.Stat stat) {
@@ -512,6 +548,17 @@ public class EasyImage {
 
     public void quantize8Bit() {
         colorProcessor.quantize8Bit();
+    }
+
+    public void quantizeMod(byte m) {
+        for (int i = 0; i < pixelData.length; i++) {
+            pixelData[i] /= m;
+            pixelData[i] *= m;
+        }
+    }
+
+    public boolean equals(EasyImage obj) {
+        return Arrays.equals(pixelData, obj.pixelData);
     }
 }
 

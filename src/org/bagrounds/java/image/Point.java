@@ -1,4 +1,4 @@
-package image;
+package org.bagrounds.java.image;
 
 import java.util.HashSet;
 import java.util.Set;

@@ -1,7 +1,7 @@
-package image.processors;
+package org.bagrounds.java.image.processors;
 
-import image.EasyImage;
-import image.math.EasyVector;
+import org.bagrounds.java.image.EasyImage;
+import org.bagrounds.java.image.math.EasyVector;
 
 /**
  * Created by bryan on 4/28/15.
@@ -9,6 +9,17 @@ import image.math.EasyVector;
 public class MorphologicalProcessor extends Processor {
   public MorphologicalProcessor(EasyImage i) {
     super(i);
+  }
+
+  public void open(int iterations) {
+    image.invert();
+    close(iterations);
+    image.invert();
+  }
+
+  public void close(int iterations) {
+    dilate(iterations);
+    erode(iterations);
   }
 
   public void dilate(int n) {
@@ -27,17 +38,6 @@ public class MorphologicalProcessor extends Processor {
   public void erode(int n) {
     image.invert();
     dilate(n);
-    image.invert();
-  }
-
-  public void close(int iterations) {
-    dilate(iterations);
-    erode(iterations);
-  }
-
-  public void open(int iterations) {
-    image.invert();
-    close(iterations);
     image.invert();
   }
 

@@ -1,6 +1,6 @@
-package image;
+package org.bagrounds.java.image;
 
-import java.lang.IllegalArgumentException;import java.lang.Override;import java.lang.String;import java.util.Arrays;
+import java.util.Arrays;
 
 /**
  * Describes an interval in 1 dimension.
