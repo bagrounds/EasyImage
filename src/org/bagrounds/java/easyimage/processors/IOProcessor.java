@@ -12,6 +12,7 @@ import java.io.IOException;
  * Created by bryan on 5/3/15.
  */
 public class IOProcessor extends Processor {
+
   public IOProcessor(EasyImage i) {
     super(i);
   }
@@ -48,7 +49,7 @@ public class IOProcessor extends Processor {
     return result;
   }
 
-  public void saveImage(String fileName, EasyImage easyImage) {
+  public static void saveImage(String fileName, EasyImage easyImage) {
     try {
       // retrieve easyimage
       File out = new File(fileName);
