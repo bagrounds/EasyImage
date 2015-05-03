@@ -1,8 +1,10 @@
-package org.bagrounds.java.image.processors;
+package org.bagrounds.java.easyimage.processors;
 
-import org.bagrounds.java.image.EasyImage;
+import org.bagrounds.java.easyimage.EasyImage;
 
 /**
+ * A collection of metric algorithms for comparing images.
+ *
  * Created by bryan on 4/28/15.
  */
 public class ComparisonProcessor extends Processor {

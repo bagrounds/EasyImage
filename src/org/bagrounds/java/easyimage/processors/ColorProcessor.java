@@ -1,7 +1,7 @@
-package org.bagrounds.java.image.processors;
+package org.bagrounds.java.easyimage.processors;
 
-import org.bagrounds.java.image.ColorPixel;
-import org.bagrounds.java.image.EasyImage;
+import org.bagrounds.java.easyimage.ColorPixel;
+import org.bagrounds.java.easyimage.EasyImage;
 
 /**
  * Created by bryan on 4/28/15.
@@ -89,6 +89,14 @@ public class ColorProcessor extends Processor {
       }
   }
 
+  public void quantizeMod(int m) {
+    for (int i = 0; i < image.pixelData.length; i++) {
+      image.pixelData[i] /= m;
+      image.pixelData[i] *= m;
+    }
+  }
+
+
   public void hueKeeper(ColorPixel color, double hueDistance) {
     for (int i = 0; i < image.width; i++)
       for (int j = 0; j < image.height; j++) {
@@ -98,13 +106,26 @@ public class ColorProcessor extends Processor {
   }
 
   public void colorKeeper(ColorPixel keep, ColorPixel discardColor, double maxDist) {
-    if (image.isBW || image.isGrayScale) throw new IllegalArgumentException("this is not a color image");
+    if (image.isBW || image.isGrayScale) throw new IllegalArgumentException("this is not a color easyimage");
     ColorPixel temp;
     for (int i = 0; i < image.width; i++) {
       for (int j = 0; j < image.height; j++) {
         temp = new ColorPixel(image.getPixelArray(i, j));
         //System.out.print(Arrays.toString(temp.byteArrayValue()) + ":" + keep.rgbDist(temp )+ "\t\t\t" );
         if (keep.rgbDist(temp) > maxDist) image.setPixelArray(i, j, discardColor.byteArrayValue());
+      }
+      //System.out.println();
+    }
+  }
+
+  public void colorFilter(ColorPixel filter, ColorPixel discardColor, double maxDist) {
+    if (image.isBW || image.isGrayScale) throw new IllegalArgumentException("this is not a color easyimage");
+    ColorPixel temp;
+    for (int i = 0; i < image.width; i++) {
+      for (int j = 0; j < image.height; j++) {
+        temp = new ColorPixel(image.getPixelArray(i, j));
+        //System.out.print(Arrays.toString(temp.byteArrayValue()) + ":" + keep.rgbDist(temp )+ "\t\t\t" );
+        if (filter.rgbDist(temp) < maxDist) image.setPixelArray(i, j, discardColor.byteArrayValue());
       }
       //System.out.println();
     }
@@ -149,11 +170,10 @@ public class ColorProcessor extends Processor {
   }
 
   public void threshold(int keepBelow, int keepAbove) {
-    if (!image.isGrayScale) throw new IllegalArgumentException();
 
     for (int i = 0; i < image.pixelData.length; i++) {
-      if (image.pixelData[i] > keepBelow && image.pixelData[i] < keepAbove) image.pixelData[i] = 0;
-      else image.pixelData[i] = (byte) 255;
+      if (image.pixelData[i] < keepBelow || image.pixelData[i] > keepAbove) image.pixelData[i] = (byte) 255;
+      else image.pixelData[i] = 0;
     }
 
   }

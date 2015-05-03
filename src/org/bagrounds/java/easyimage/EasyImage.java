@@ -1,23 +1,24 @@
-package org.bagrounds.java.image;
+package org.bagrounds.java.easyimage;
 
-import org.bagrounds.java.image.math.EasyVector;
-import org.bagrounds.java.image.processors.*;
+import org.bagrounds.java.easyimage.geometry.BoundingBox;
+import org.bagrounds.java.easyimage.geometry.Interval;
+import org.bagrounds.java.easyimage.math.EasyVector;
+import org.bagrounds.java.easyimage.processors.*;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
-import java.awt.image.Raster;
-import java.io.File;
-import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.Arrays;
 import java.util.LinkedList;
 
 /**
- * EasyImage is an image class that encapsulates a wide array of image processing functionality. The intent is to keep execution as simple as possible.
+ * Image object class encapsulating various image processing techniques.
+ * I developed this library for use in a personal project. I recently refactored it out of that project into this stand-
+ * alone library, so it may be a bit disorganized and incomplete, but it should get better over time.
+ *
  * Created by bagrounds on 12/5/14.
  */
 public class EasyImage {
@@ -29,12 +30,15 @@ public class EasyImage {
     public boolean isBW;
     public int pixelLength;
     public byte[] pixelData;
+
+    public IOProcessor ioProcessor = new IOProcessor(this);
     public SearchProcessor searchProcessor = new SearchProcessor(this);
-    private MorphologicalProcessor morphologicalProcessor = new MorphologicalProcessor(this);
-    private ConnectedComponentProcessor connectedComponentProcessor = new ConnectedComponentProcessor(this);
-    private ComparisonProcessor comparisonProcessor = new ComparisonProcessor(this);
-    private ColorProcessor colorProcessor = new ColorProcessor(this);
-    private StatisticProcessor statisticProcessor = new StatisticProcessor(this);
+    public MorphologicalProcessor morphologicalProcessor = new MorphologicalProcessor(this);
+    public ConnectedComponentProcessor connectedComponentProcessor = new ConnectedComponentProcessor(this);
+    public ComparisonProcessor comparisonProcessor = new ComparisonProcessor(this);
+    public ColorProcessor colorProcessor = new ColorProcessor(this);
+    public StatisticProcessor statisticProcessor = new StatisticProcessor(this);
+
 
     public EasyImage() {
         width = 1;
@@ -81,88 +85,6 @@ public class EasyImage {
         pixelLength = image.pixelLength;
         pixelData = image.pixelData.clone();
 
-    }
-
-    public static EasyImage loadImage(String fileName) {
-        File file = new File(fileName);
-        if (!file.exists() || !file.canRead()) {
-            System.err.println("cannot read file: " + fileName + "!");
-            return new EasyImage();
-        }
-
-        EasyImage result = null;
-        BufferedImage img = null;
-        BufferedImage noAlpha = null;
-        try {
-            img = ImageIO.read(file);
-            int w = img.getWidth();
-            int h = img.getHeight();
-            noAlpha = new BufferedImage(w, h,
-                    BufferedImage.TYPE_3BYTE_BGR);
-            Raster raster = img.getRaster().createChild(0, 0, w, h, 0, 0, new
-                    int[]{2, 1, 0});
-            noAlpha.setData(raster);
-            result = new EasyImage(noAlpha);
-        } catch (Exception e) {
-            System.err.println("Error reading image");
-            e.printStackTrace();
-            result = new EasyImage();
-        } finally {
-            if (img != null) img.flush();
-            if (noAlpha != null) noAlpha.flush();
-        }
-
-        return result;
-    }
-
-    public void saveImage(String fileName) {
-        try {
-            // retrieve image
-            File out = new File(fileName);
-            ImageIO.write(getBufferedImage(), "png", out);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public BufferedImage getBufferedImage() {
-        int w = this.width;
-        int h = this.height;
-        BufferedImage bufferedImage;
-
-        if (isGrayScale) {
-            bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
-            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
-        } else if (isBW) {
-            bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_BINARY);
-            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
-        } else {
-            bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_3BYTE_BGR);
-            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
-        }
-
-        return bufferedImage;
-    }
-
-    private int[] getIntRGBRasterArray() {
-        int[] raster;
-        if (isBW) {
-            System.out.println("length = " + pixelData.length);
-            raster = new int[pixelData.length * 3];
-
-            for (int i = 0, j = 0; i < pixelData.length; i++) {
-                raster[j++] = pixelData[i] & 0xff;
-                raster[j++] = pixelData[i] & 0xff;
-                raster[j++] = pixelData[i] & 0xff;
-            }
-        } else {
-            raster = new int[pixelData.length];
-
-            for (int i = 0; i < pixelData.length; i++) {
-                raster[i] = pixelData[i] & 0xff;
-            }
-        }
-        return raster;
     }
 
     public void addBorder(int thickness) {
@@ -294,7 +216,6 @@ public class EasyImage {
             }
     }
 
-
     public void keepPixelsWithValues(byte[] values) {
         boolean pixelIsValue = false;
 
@@ -386,6 +307,46 @@ public class EasyImage {
         frame.setVisible(true);
     }
 
+    public BufferedImage getBufferedImage() {
+        int w = this.width;
+        int h = this.height;
+        BufferedImage bufferedImage;
+
+        if (isGrayScale) {
+            bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
+            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
+        } else if (isBW) {
+            bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_BINARY);
+            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
+        } else {
+            bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_3BYTE_BGR);
+            bufferedImage.getRaster().setPixels(0, 0, w, h, getIntRGBRasterArray());
+        }
+
+        return bufferedImage;
+    }
+
+    private int[] getIntRGBRasterArray() {
+        int[] raster;
+        if (isBW) {
+            System.out.println("length = " + pixelData.length);
+            raster = new int[pixelData.length * 3];
+
+            for (int i = 0, j = 0; i < pixelData.length; i++) {
+                raster[j++] = pixelData[i] & 0xff;
+                raster[j++] = pixelData[i] & 0xff;
+                raster[j++] = pixelData[i] & 0xff;
+            }
+        } else {
+            raster = new int[pixelData.length];
+
+            for (int i = 0; i < pixelData.length; i++) {
+                raster[i] = pixelData[i] & 0xff;
+            }
+        }
+        return raster;
+    }
+
     public LinkedList<Interval> getHorizontalGaps(int gapSize) {
 
         LinkedList<Interval> intervals = new LinkedList<Interval>();
@@ -409,7 +370,7 @@ public class EasyImage {
 
     public EasyVector getColumn(int col) {
         EasyVector vector = new EasyVector();
-        if (col < 0 || col > width - 1) throw new IllegalArgumentException("coloumn out of image bounds");
+        if (col < 0 || col > width - 1) throw new IllegalArgumentException("coloumn out of easyimage bounds");
         if (!isBW && !isGrayScale) throw new IllegalArgumentException("unsupported for color images");
 
         for (int j = 0; j < height; j++) {
@@ -427,134 +388,6 @@ public class EasyImage {
                 setPixelArray(i, j, getPixelArray(width - 1 - i, height - 1 - j));
                 setPixelArray(width - 1 - i, height - 1 - j, temp);
             }
-    }
-
-    public double meanSqrtDiff(EasyImage image) {
-        return comparisonProcessor.meanSqrtDiff(image);
-    }
-
-    // statistic processing
-
-    public double imageSimilarity(EasyImage image) {
-        return comparisonProcessor.imageSimilarity(image);
-    }
-
-    public double meanAbsDiff(EasyImage image) {
-        return comparisonProcessor.meanAbsDiff(image);
-    }
-
-    public int[] hueHistogram() {
-        return statisticProcessor.hueHistogram();
-    }
-
-    public byte mode() {
-        return statisticProcessor.mode();
-    }
-
-    public int[] histogram() {
-        return statisticProcessor.histogram();
-    }
-
-    public double norm2() {
-        return statisticProcessor.norm2();
-
-    }
-
-    public byte[] borderlessNeighborhoodStat(int x, int y, int r, EasyVector.Stat stat) {
-        return statisticProcessor.borderlessNeighborhoodStat(x, y, r, stat);
-    }
-
-    public void filter(EasyVector.Stat stat, int r) {
-        statisticProcessor.filter(stat, r);
-    }
-
-    // morphological processing
-
-    public void dilate(int n) {
-        morphologicalProcessor.dilate(n);
-    }
-
-    public void erode(int n) {
-        morphologicalProcessor.erode(n);
-    }
-
-    public void close(int iterations) {
-        morphologicalProcessor.close(iterations);
-    }
-
-    public void open(int iterations) {
-        morphologicalProcessor.open(iterations);
-    }
-
-    // connected component processing
-
-    public BoundingBox[] connectedComponents() {
-        return connectedComponentProcessor.computeConnectedComponents();
-    }
-
-    public void keepLargestComponent() {
-        connectedComponentProcessor.keepLargestComponent();
-    }
-
-    public void filterComponentsBySize(double smallFraction, double largeFraction) {
-        connectedComponentProcessor.filterComponentsBySize(smallFraction, largeFraction);
-    }
-
-    public void filterComponentsByBoundingBoxArea(double smallFraction, double largeFraction) {
-        connectedComponentProcessor.filterComponentsByBoundingBoxArea(smallFraction, largeFraction);
-    }
-
-    public void filterComponentsByBoundingBoxHeight(int minPixelHeight, int maxPixelHeight) {
-        connectedComponentProcessor.filterComponentsByBoundingBoxHeight(minPixelHeight, maxPixelHeight);
-    }
-
-    public void filterComponentsByBoundingBoxWidth(int minPixelWidth, int maxPixelWidth) {
-        connectedComponentProcessor.filterComponentsByBoundingBoxWidth(minPixelWidth, maxPixelWidth);
-    }
-
-    // color processing
-
-    public void convertToBW(int thresh) {
-        colorProcessor.convertToBW(thresh);
-    }
-
-    public void convertToGrayScale() {
-        colorProcessor.convertToGrayScale();
-    }
-
-    public int grayValue(byte[] pixelArray) {
-        return colorProcessor.grayValue(pixelArray);
-    }
-
-    public void threshold(int keepBelow, int keepAbove) {
-        colorProcessor.threshold(keepBelow, keepAbove);
-    }
-
-    public void invert() {
-        colorProcessor.invert();
-    }
-
-    public void colorKeeper(ColorPixel keep, ColorPixel discardColor, double maxDist) {
-        colorProcessor.colorKeeper(keep, discardColor, maxDist);
-    }
-
-    public void hueKeeper(ColorPixel color, double hueDistance) {
-        colorProcessor.hueKeeper(color, hueDistance);
-    }
-
-    public void quantize3Bit() {
-        colorProcessor.quantize3Bit();
-    }
-
-    public void quantize8Bit() {
-        colorProcessor.quantize8Bit();
-    }
-
-    public void quantizeMod(byte m) {
-        for (int i = 0; i < pixelData.length; i++) {
-            pixelData[i] /= m;
-            pixelData[i] *= m;
-        }
     }
 
     public boolean equals(EasyImage obj) {

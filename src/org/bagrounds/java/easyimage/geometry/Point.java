@@ -1,9 +1,11 @@
-package org.bagrounds.java.image;
+package org.bagrounds.java.easyimage.geometry;
 
 import java.util.HashSet;
 import java.util.Set;
 
 /**
+ * Point on an image corresponding to a pixel. This class is used by the connected components algorithm.
+ *
  * Created by bryan on 4/28/15.
  */
 public class Point {

@@ -1,7 +1,7 @@
-package org.bagrounds.java.image.processors;
+package org.bagrounds.java.easyimage.processors;
 
-import org.bagrounds.java.image.BoundingBox;
-import org.bagrounds.java.image.EasyImage;
+import org.bagrounds.java.easyimage.EasyImage;
+import org.bagrounds.java.easyimage.geometry.BoundingBox;
 
 import java.util.ArrayList;
 import java.util.Arrays;

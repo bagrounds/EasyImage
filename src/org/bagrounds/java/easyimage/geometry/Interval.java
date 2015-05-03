@@ -1,4 +1,4 @@
-package org.bagrounds.java.image;
+package org.bagrounds.java.easyimage.geometry;
 
 import java.util.Arrays;
 

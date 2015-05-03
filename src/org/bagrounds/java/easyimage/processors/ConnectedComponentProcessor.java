@@ -1,8 +1,8 @@
-package org.bagrounds.java.image.processors;
+package org.bagrounds.java.easyimage.processors;
 
-import org.bagrounds.java.image.BoundingBox;
-import org.bagrounds.java.image.EasyImage;
-import org.bagrounds.java.image.Point;
+import org.bagrounds.java.easyimage.EasyImage;
+import org.bagrounds.java.easyimage.geometry.BoundingBox;
+import org.bagrounds.java.easyimage.geometry.Point;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -17,7 +17,7 @@ public class ConnectedComponentProcessor extends Processor {
   }
 
   public void keepLargestComponent() {
-    image.connectedComponents();
+    image.connectedComponentProcessor.computeConnectedComponents();
     int[] histogram = new int[256];
 
     for (byte b : image.pixelData) histogram[b & 0xff]++;
@@ -34,7 +34,7 @@ public class ConnectedComponentProcessor extends Processor {
     image.keepPixelsWithValues(new byte[]{(byte) maxIndex});
     image.isBW = false;
     image.isGrayScale = true;
-    image.convertToBW(0);
+    image.colorProcessor.convertToBW(0);
   }
 
   public BoundingBox[] computeConnectedComponents() {
@@ -112,8 +112,10 @@ public class ConnectedComponentProcessor extends Processor {
     int large = (int) Math.floor(size * largeFraction);
 
     EasyImage temp = new EasyImage(image);
-    BoundingBox[] boxes = temp.connectedComponents();
+    BoundingBox[] boxes = temp.connectedComponentProcessor.computeConnectedComponents();
     int componentSize = 0;
+
+    size = temp.pixelData.length;
 
     for (int a = 0; a <= boxes.length; a++) {
 
@@ -135,7 +137,7 @@ public class ConnectedComponentProcessor extends Processor {
     int area;
 
     EasyImage temp = new EasyImage(image);
-    BoundingBox[] boxes = temp.connectedComponents();
+    BoundingBox[] boxes = temp.connectedComponentProcessor.computeConnectedComponents();
 
     for (int a = 0; a <= boxes.length; a++) {
       area = boxes[a].area();
@@ -148,7 +150,7 @@ public class ConnectedComponentProcessor extends Processor {
 
   public void filterComponentsByBoundingBoxHeight(int minPixelHeight, int maxPixelHeight) {
     EasyImage temp = new EasyImage(image);
-    BoundingBox[] boxes = temp.connectedComponents();
+    BoundingBox[] boxes = temp.connectedComponentProcessor.computeConnectedComponents();
     int height;
 
 
@@ -163,7 +165,7 @@ public class ConnectedComponentProcessor extends Processor {
 
   public void filterComponentsByBoundingBoxWidth(int minPixelWidth, int maxPixelWidth) {
     EasyImage temp = new EasyImage(image);
-    BoundingBox[] boxes = temp.connectedComponents();
+    BoundingBox[] boxes = temp.connectedComponentProcessor.computeConnectedComponents();
     int width;
 
 

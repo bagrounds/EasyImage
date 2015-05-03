@@ -1,4 +1,4 @@
-package org.bagrounds.java.image.math;
+package org.bagrounds.java.easyimage.math;
 
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
@@ -8,7 +8,7 @@ import java.util.Random;
 import static java.lang.Math.*;
 
 /**
- * EasyVector encapsulates some vector math, which is often useful in image processing techniques.
+ * EasyVector encapsulates some vector math, which is often useful in easyimage processing techniques.
  * <p/>
  * Created by bagrounds on 12/6/14.
  */
@@ -181,6 +181,7 @@ public class EasyVector extends ArrayList<Number> {
                 try {
                     value += mask[j] * get(j).doubleValue();
                 } catch (ArrayIndexOutOfBoundsException e) {
+                    System.err.println(e.getMessage());
                 }
             }
             corners.add(Math.abs(value / 3));

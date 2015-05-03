@@ -1,8 +1,8 @@
-package org.bagrounds.java.image.processors;
+package org.bagrounds.java.easyimage.processors;
 
-import org.bagrounds.java.image.ColorPixel;
-import org.bagrounds.java.image.EasyImage;
-import org.bagrounds.java.image.math.EasyVector;
+import org.bagrounds.java.easyimage.ColorPixel;
+import org.bagrounds.java.easyimage.EasyImage;
+import org.bagrounds.java.easyimage.math.EasyVector;
 
 import static java.lang.Math.pow;
 
@@ -71,6 +71,34 @@ public class StatisticProcessor extends Processor {
     return max;
   }
 
+  public int min() {
+    //if (!isGrayScale) throw new InvalidParameterException();
+
+    int min = 255;
+
+    for (byte b : image.pixelData) if ((b & 0xff) < min) min = (b & 0xff);
+
+    return min;
+  }
+
+  /**
+   * sets the value of each pixel to the value of the statistic specified by the stat param taken over the neighborhood
+   * specified by the r param.
+   *
+   * @param stat - local statistic to be computed
+   * @param r    - half side length minus 1 of the square defining the local area surrounding each pixel
+   */
+
+  public void filter(EasyVector.Stat stat, int r) {
+    EasyImage temp = new EasyImage(image);
+
+    for (int i = 0; i < image.width; i++) {
+      for (int j = 0; j < image.height; j++) {
+        image.setPixelArray(i, j, temp.statisticProcessor.borderlessNeighborhoodStat(i, j, r, stat));
+      }
+    }
+  }
+
   public byte[] borderlessNeighborhoodStat(int x, int y, int r, EasyVector.Stat stat) {
     byte[] result = new byte[image.pixelLength];
 
@@ -91,25 +119,5 @@ public class StatisticProcessor extends Processor {
       neighborhood.clear();
     }
     return result;
-  }
-
-  public int min() {
-    //if (!isGrayScale) throw new InvalidParameterException();
-
-    int min = 255;
-
-    for (byte b : image.pixelData) if ((b & 0xff) < min) min = (b & 0xff);
-
-    return min;
-  }
-
-  public void filter(EasyVector.Stat stat, int r) {
-    EasyImage temp = new EasyImage(image);
-
-    for (int i = 0; i < image.width; i++) {
-      for (int j = 0; j < image.height; j++) {
-        image.setPixelArray(i, j, temp.borderlessNeighborhoodStat(i, j, r, stat));
-      }
-    }
   }
 }

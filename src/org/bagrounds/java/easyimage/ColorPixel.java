@@ -1,6 +1,6 @@
-package org.bagrounds.java.image;
+package org.bagrounds.java.easyimage;
 
-import org.bagrounds.java.image.math.EasyVector;
+import org.bagrounds.java.easyimage.math.EasyVector;
 
 import java.awt.*;
 import java.util.Arrays;
@@ -42,6 +42,16 @@ public class ColorPixel {
         this.g = values[1] & 0xff;
         this.b = values[2] & 0xff;
     }
+
+    public ColorPixel(int r, int g, int b) {
+
+        this.r = r & 0xff;
+        this.g = g & 0xff;
+        this.b = b & 0xff;
+    }
+
+
+
 
     public static byte[] rgbFromHsi(double h, double s, double i) {
         int r;
